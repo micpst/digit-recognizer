@@ -1,6 +1,7 @@
 import sys
 import cv2
 import pygame
+
 from tensorflow.keras.models import load_model 
 
 class Board:
@@ -44,7 +45,7 @@ class Board:
         if self.drawing: return self.pen_color
         if self.erasing: return self.bg_color
 
-    def make_prediction(self):
+    def quess(self):
         model = load_model('model.h5')
 
 
@@ -62,7 +63,7 @@ class Board:
                 elif e.key == pygame.K_LCTRL: self.ctrl_holding = True
                 elif e.key == pygame.K_n and self.ctrl_holding: self.window.fill(self.bg_color)
 
-                elif e.key == pygame.K_RETURN: self.make_prediction()
+                elif e.key == pygame.K_RETURN: self.quess()
 
                 elif e.key == pygame.K_1: self.bg_mode = 'black'
                 elif e.key == pygame.K_2: self.bg_mode = 'white'

@@ -5,8 +5,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
 
-from tensorflow.keras.datasets import mnist
-from tensorflow.keras.utils import to_categorical
+from data import X_train, y_train
 
 def create_model():
     model = Sequential()
@@ -24,19 +23,6 @@ def create_model():
 
     model.compile(Adam(lr=.01), loss='categorical_crossentropy', metrics=['accuracy'])
     return model
-
-def preprocess(X, y):
-    X = X.reshape(X.shape[0], 28, 28, 1)
-    X = X / 255
-    y = to_categorical(y, 10)
-    return X, y
-
-(X_train, y_train), _ = mnist.load_data()
-
-assert(X_train.shape[0] == y_train.shape[0]), 'The number of images is not equal to the number of labels'
-assert(X_train.shape[1:] == (28, 28)), 'The dimensions of the images are not 28x28'
-
-X_train, y_train = preprocess(X_train, y_train)
 
 model = create_model()
 model.fit(X_train, y_train, validation_split=0.1, epochs=5, batch_size=400, verbose=1, shuffle=1)
