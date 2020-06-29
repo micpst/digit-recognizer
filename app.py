@@ -1,7 +1,8 @@
 import sys
 import cv2
 import pygame
-
+import numpy as np
+import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model 
 
 class Board:
@@ -10,6 +11,7 @@ class Board:
         self.window = pygame.display.set_mode(resolution)
         self.clock = pygame.time.Clock()
         self.FPS = 120
+        self.model = load_model('model.h5')
         
         self.bg_mode = 'default'
         self.pen_mode = 'default'
@@ -45,10 +47,28 @@ class Board:
         if self.drawing: return self.pen_color
         if self.erasing: return self.bg_color
 
-    def quess(self):
-        model = load_model('model.h5')
+    @property
+    def surface(self):
+        pixels = np.zeros((self.window_heigth, self.window_width, 3), dtype='float32')
+        surface = pygame.display.get_surface()
 
+        for y in range(self.window_heigth):
+            for x in range(self.window_width):
+                color = surface.get_at((x, y))
+                pixels[y][x] = np.array([color.r, color.g, color.b])
 
+        return pixels
+
+    def quess(self): 
+        img = cv2.resize(self.surface, (28, 28))
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        # img = cv2.bitwise_not(img)
+        img = img.reshape(1, *img.shape, 1)
+        img = img / 255
+    
+        prediction = self.model.predict(img)
+        print(f'Predicted number: {prediction}')
+        
     def navigate(self):
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
@@ -85,7 +105,7 @@ class Board:
                 if e.button == 1: self.drawing = False
                 elif e.button == 3: self.erasing = False    
 
-            elif e.type == pygame.MOUSEMOTION:
+            elif e.type == pygame.MOUSEMOTION: 
                 self.pointer = pygame.mouse.get_pos()
 
     def replenish(self):
