@@ -3,7 +3,8 @@ import cv2
 import pygame
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow.keras.models import load_model 
+
+from tensorflow.keras.models import load_model
 
 class Board:
     def __init__(self, resolution):
@@ -46,6 +47,7 @@ class Board:
     def color(self):
         if self.drawing: return self.pen_color
         if self.erasing: return self.bg_color
+        return None
 
     @property
     def surface(self):
@@ -61,14 +63,14 @@ class Board:
 
     def quess(self): 
         img = cv2.resize(self.surface, (28, 28))
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        # img = cv2.bitwise_not(img)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) 
+
         img = img.reshape(1, *img.shape, 1)
         img = img / 255
     
-        prediction = self.model.predict(img)
+        [prediction] = self.model.predict_classes(img)
         print(f'Predicted number: {prediction}')
-        
+
     def navigate(self):
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
