@@ -2,7 +2,6 @@ import sys
 import cv2
 import pygame
 import numpy as np
-import matplotlib.pyplot as plt
 
 from tensorflow.keras.models import load_model
 
@@ -24,7 +23,7 @@ class Board:
 
         self.model = load_model('model.h5')
         self.prediction = None
-        
+
         self.colors = {
             'white': (255, 255, 255),
             'red':   (255, 0  , 0  ),
@@ -39,9 +38,9 @@ class Board:
         self.thickness = 10
 
         self.pointer = None
-        self.prev_pointer = None    
+        self.prev_pointer = None
 
-        self.active = False
+        self.is_active = False
         self.is_edited = True
         self.CTRL_hold = False
 
@@ -67,6 +66,19 @@ class Board:
         return pixels
 
 
+    def change_background_color(self, color):
+        surface = pygame.display.get_surface()
+
+        for y in range(self.heigth):
+            for x in range(self.width):
+                pixel_color = surface.get_at((x, y))
+
+                if pixel_color == pygame.Color(*self.background_color):
+                    surface.set_at((x, y), pygame.Color(*self.colors[color])) 
+
+        self.background_color = self.colors[color]
+
+
     def quess(self): 
 
         '''
@@ -75,7 +87,7 @@ class Board:
         '''
 
         img = cv2.resize(self.surface, (28, 28))
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) 
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
         img = img.reshape(1, *img.shape, 1)
         img = img / 255
@@ -103,16 +115,19 @@ class Board:
                 elif e.key == pygame.K_LCTRL: 
                     self.CTRL_hold = True
 
+                elif e.key == pygame.K_1 and self.CTRL_hold: 
+                    self.change_background_color('black')
+
+                elif e.key == pygame.K_2 and self.CTRL_hold: 
+                    self.change_background_color('white')
+
                 elif e.key == pygame.K_n and self.CTRL_hold: 
                     self.window.fill(self.background_color)
 
                 elif e.key == pygame.K_RETURN: 
                     self.is_edited = False
                     self.quess()
-
-                elif e.key == pygame.K_1: self.background_color = self.colors['black']
-                elif e.key == pygame.K_2: self.background_color = self.colors['white']
-
+  
                 elif e.key == pygame.K_q: self.pen_color = self.colors['black']
                 elif e.key == pygame.K_w: self.pen_color = self.colors['white']
                 elif e.key == pygame.K_r: self.pen_color = self.colors['red']               
@@ -122,12 +137,12 @@ class Board:
             elif e.type == pygame.MOUSEBUTTONDOWN:
                 if e.button == 1: 
                     self.pointer_color = self.pen_color
-                    self.active = True
+                    self.is_active = True
                     self.is_edited = True
 
                 elif e.button == 3: 
                     self.pointer_color = self.background_color
-                    self.active = True
+                    self.is_active = True
                     self.is_edited = True
 
                 elif e.button == 4 and self.CTRL_hold: self.thickness = min(self.thickness + 1, 20)
@@ -135,7 +150,7 @@ class Board:
 
             elif e.type == pygame.MOUSEBUTTONUP:
                 if e.button == 1 or e.button == 3: 
-                    self.active = False
+                    self.is_active = False
 
             elif e.type == pygame.MOUSEMOTION: 
                 self.prev_pointer = self.pointer
@@ -168,7 +183,7 @@ class Board:
         Renders board screen.
         '''
 
-        if self.active:
+        if self.is_active:
 
             for point in self.replenish():
                 pygame.draw.circle(self.window, self.pointer_color, point, self.thickness)
