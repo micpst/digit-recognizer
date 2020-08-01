@@ -19,6 +19,7 @@ animation = [
 
 os.system('cls')
 
+print()
 print('Welcome to the Number Guesser!')
 print()
 

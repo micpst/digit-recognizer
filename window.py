@@ -3,6 +3,7 @@ import cv2
 import pygame
 import numpy as np
 
+from typing import Tuple
 from tensorflow.keras.models import load_model
 
 
@@ -10,14 +11,19 @@ class Board:
 
 
     '''
-    Board creates system window in which you can draw whatever you want using mouse.
-    Board has also access to keras model that was trained to recognise numbers and 
-    uses it to guess number you draw on screen.
-    Class uses pygame and tensorflow backend.
+    It creates system window in which you can draw whatever you want using mouse.
+    Board has access to the keras model that was trained to recognise numbers and 
+    uses it to guess number you draw on screen. Class uses pygame and tensorflow backend.
     '''
 
 
-    def __init__(self, resolution):
+    def __init__(self, resolution: Tuple[int, int]):
+
+        '''
+        Constructor for the `Board` class.
+        :param resolution: Resolution of app window.
+        '''
+        
         self.width, self.heigth = resolution
         self.window = pygame.display.set_mode(resolution)
 
@@ -49,32 +55,24 @@ class Board:
 
 
     @property
-    def surface(self):
+    def canvas(self):
 
-        '''
-        Array of surface pixels value.
-        '''
-
-        pixels = np.zeros((self.heigth, self.width, 3), dtype='float32')
         surface = pygame.display.get_surface()
+        pxarray = pygame.PixelArray(surface)
+        
+        return pxarray
+
+
+    def change_background_color(self, color: str):
+
+        '''
+        Changes canvas background color.
+        '''
 
         for y in range(self.heigth):
             for x in range(self.width):
-                color = surface.get_at((x, y))
-                pixels[y][x] = np.array([color.r, color.g, color.b])
-
-        return pixels
-
-
-    def change_background_color(self, color):
-        surface = pygame.display.get_surface()
-
-        for y in range(self.heigth):
-            for x in range(self.width):
-                pixel_color = surface.get_at((x, y))
-
-                if pixel_color == pygame.Color(*self.background_color):
-                    surface.set_at((x, y), pygame.Color(*self.colors[color])) 
+                if self.canvas[x, y] == self.canvas.surface.map_rgb(self.background_color):
+                    self.canvas[x, y] = self.colors[color]
 
         self.background_color = self.colors[color]
 
@@ -86,12 +84,20 @@ class Board:
         Prints predicted number to the console.
         '''
 
-        img = cv2.resize(self.surface, (28, 28))
+        src = np.zeros((*self.canvas.shape, 3), dtype='uint8')
+
+        for y in range(self.heigth):
+            for x in range(self.width):
+                mapped_int = self.canvas[x, y] 
+                color = self.canvas.surface.unmap_rgb(mapped_int)
+                src[y][x] = [color.r, color.g, color.b]
+        
+        img = cv2.resize(src, (28, 28), interpolation=cv2.INTER_AREA)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
         img = img.reshape(1, *img.shape, 1)
         img = img / 255
-    
+
         [prediction] = self.model.predict_classes(img)
         self.prediction = prediction
 
@@ -157,7 +163,7 @@ class Board:
                 self.pointer = pygame.mouse.get_pos()
 
 
-    def replenish(self):
+    def replenish(self) -> Tuple[int, int]:
 
         '''
         Generates points to fill gap between 2 pointer positions.
