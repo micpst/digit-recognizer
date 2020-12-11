@@ -3,106 +3,108 @@ import cv2
 import pygame
 import numpy as np
 
-from typing import Tuple
+from typing import Tuple, Generator
 from tensorflow.keras.models import load_model
+
+class Pointer:
+
+    def __init__(
+        self, 
+        window: pygame.Surface,
+        position: Tuple[int, int],
+        color: Tuple[int, int, int], 
+        thickness: int
+    ) -> None:
+
+        '''
+        Constructor for the `Pointer` class.
+        Constructor arguments:
+        :param window: ref to the window that pointer belongs to.
+        :param position: current position of the pointer.
+        :param color: color of the pointer.
+        :param thickness: thickness of the pointer.
+        '''
+
+        self.color = color
+        self.window = window
+        self.position = position
+        self._thickness = thickness
+
+    @property
+    def thickness(self) -> int:
+        
+        return self._thickness
+
+    @thickness.setter
+    def thickness(self, val: int) -> None:
+        
+        if 5 < val < 20:
+            self._thickness = val
+
+    def draw(self, position: Tuple[int, int]) -> None:
+        
+        self.position = position
+        pygame.draw.circle(self.window, self.color, self.position, self.thickness)
 
 
 class Board:
 
+    COLORS = {
+        'white': (255, 255, 255),
+        'red':   (255, 0  , 0  ),
+        'green': (0  , 255, 0  ),
+        'blue':  (0  , 0  , 255),
+        'black': (0  , 0  , 0  ),
+    }
 
-    '''
-    It creates system window in which you can draw whatever you want using mouse.
-    Board has access to the keras model that was trained to recognise numbers and 
-    uses it to guess number you draw on screen. Class uses pygame and tensorflow backend.
-    '''
-
-
-    def __init__(self, resolution: Tuple[int, int]):
+    def __init__(self, resolution: Tuple[int, int]) -> None:
 
         '''
         Constructor for the `Board` class.
-        :param resolution: Resolution of app window.
+        Constructor argument:
+        :param resolution: resolution of the system window.
         '''
         
         self.width, self.heigth = resolution
         self.window = pygame.display.set_mode(resolution)
+        self._background = self.COLORS['white']
 
-        self.model = load_model('model.h5')
-        self.prediction = None
+        self.pen    = Pointer(self.window, None, self.COLORS['black'], 10)
+        self.rubber = Pointer(self.window, None, self.COLORS['white'], 10)
 
-        self.colors = {
-            'white': (255, 255, 255),
-            'red':   (255, 0  , 0  ),
-            'green': (0  , 255, 0  ),
-            'blue':  (0  , 0  , 255),
-            'black': (0  , 0  , 0  ),
-        }
-
-        self.background_color = self.colors['white']
-        self.pen_color = self.colors['black']
-        self.pointer_color = self.pen_color
-        self.thickness = 10
-
-        self.pointer = None
-        self.prev_pointer = None
+        self.pointer = self.pen
 
         self.is_active = False
         self.is_edited = True
         self.CTRL_hold = False
 
-        self.window.fill(self.background_color)
+        self.window.fill(self._background)
         pygame.display.set_caption('Number guesser')
 
-
     @property
-    def canvas(self):
+    def canvas(self) -> pygame.PixelArray:
 
         surface = pygame.display.get_surface()
         pxarray = pygame.PixelArray(surface)
         
         return pxarray
 
-
-    def change_background_color(self, color: str):
-
-        '''
-        Changes canvas background color.
-        '''
-
-        for y in range(self.heigth):
-            for x in range(self.width):
-                if self.canvas[x, y] == self.canvas.surface.map_rgb(self.background_color):
-                    self.canvas[x, y] = self.colors[color]
-
-        self.background_color = self.colors[color]
-
-
-    def quess(self): 
-
-        '''
-        Uses leNet model to predict a number from the board surface.
-        Prints predicted number to the console.
-        '''
-
-        src = np.zeros((*self.canvas.shape, 3), dtype='uint8')
-
-        for y in range(self.heigth):
-            for x in range(self.width):
-                mapped_int = self.canvas[x, y] 
-                color = self.canvas.surface.unmap_rgb(mapped_int)
-                src[y][x] = [color.r, color.g, color.b]
+    @property
+    def background(self) -> Tuple[int, int, int]:
         
-        img = cv2.resize(src, (28, 28), interpolation=cv2.INTER_AREA)
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        return self._background
 
-        img = img.reshape(1, *img.shape, 1)
-        img = img / 255
+    @background.setter
+    def background(self, color: Tuple[int, int, int]) -> None:
 
-        [prediction] = self.model.predict_classes(img)
-        self.prediction = prediction
+        for y in range(self.heigth):
+            for x in range(self.width):
+                if self.canvas[x, y] == self.canvas.surface.map_rgb(self.background):
+                    self.canvas[x, y] = color
 
+        self._background = color
 
-    def navigate(self):
+    def navigate(self) -> None:
 
         '''
         Reads user input and updates app state.
@@ -118,83 +120,85 @@ class Board:
                     pygame.quit()
                     sys.exit(0)
 
+                elif e.key == pygame.K_RETURN: 
+                    self.is_edited = False
+
                 elif e.key == pygame.K_LCTRL: 
                     self.CTRL_hold = True
 
+                elif e.key == pygame.K_n and self.CTRL_hold: 
+                    self.window.fill(self.background)
+
                 elif e.key == pygame.K_1 and self.CTRL_hold: 
-                    self.change_background_color('black')
+                    self.background = self.COLORS['black']
+                    self.rubber.color = self.COLORS['black']
 
                 elif e.key == pygame.K_2 and self.CTRL_hold: 
-                    self.change_background_color('white')
-
-                elif e.key == pygame.K_n and self.CTRL_hold: 
-                    self.window.fill(self.background_color)
-
-                elif e.key == pygame.K_RETURN: 
-                    self.is_edited = False
-                    self.quess()
+                    self.background = self.COLORS['white']
+                    self.rubber.color = self.COLORS['white']
   
-                elif e.key == pygame.K_q: self.pen_color = self.colors['black']
-                elif e.key == pygame.K_w: self.pen_color = self.colors['white']
-                elif e.key == pygame.K_r: self.pen_color = self.colors['red']               
-                elif e.key == pygame.K_g: self.pen_color = self.colors['green']        
-                elif e.key == pygame.K_b: self.pen_color = self.colors['blue']
+                elif e.key == pygame.K_q: self.pen.color = self.COLORS['black']
+                elif e.key == pygame.K_w: self.pen.color = self.COLORS['white']
+                elif e.key == pygame.K_r: self.pen.color = self.COLORS['red']               
+                elif e.key == pygame.K_g: self.pen.color = self.COLORS['green']        
+                elif e.key == pygame.K_b: self.pen.color = self.COLORS['blue']
 
             elif e.type == pygame.MOUSEBUTTONDOWN:
                 if e.button == 1: 
-                    self.pointer_color = self.pen_color
+                    self.pointer = self.pen
                     self.is_active = True
                     self.is_edited = True
 
                 elif e.button == 3: 
-                    self.pointer_color = self.background_color
+                    self.pointer = self.rubber
                     self.is_active = True
                     self.is_edited = True
 
-                elif e.button == 4 and self.CTRL_hold: self.thickness = min(self.thickness + 1, 20)
-                elif e.button == 5 and self.CTRL_hold: self.thickness = max(self.thickness - 1, 10)
+                elif e.button == 4 and self.CTRL_hold: self.pointer.thickness += 1
+                elif e.button == 5 and self.CTRL_hold: self.pointer.thickness -= 1
 
             elif e.type == pygame.MOUSEBUTTONUP:
                 if e.button == 1 or e.button == 3: 
                     self.is_active = False
+                    self.pointer.position = None
 
-            elif e.type == pygame.MOUSEMOTION: 
-                self.prev_pointer = self.pointer
-                self.pointer = pygame.mouse.get_pos()
-
-
-    def replenish(self) -> Tuple[int, int]:
+    def fill(self, p1: Tuple[int, int], p2: Tuple[int, int]) -> Generator[Tuple[int, int], None, None]:
 
         '''
         Generates points to fill gap between 2 pointer positions.
         '''
 
-        x1, y1 = self.pointer
-        x2, y2 = self.prev_pointer
+        if p1 is None: return p2
+
+        x1, y1 = p1
+        x2, y2 = p2
 
         dx, dy = x1 - x2, y1 - y2
-        n_iters = max(abs(dx), abs(dy))
+        n = max(abs(dx), abs(dy))
         
-        for i in range(n_iters):
-            progress = 1.0 * i / n_iters
+        for i in range(n):
+            progress = 1. * i / n
             aprogress = 1 - progress
             x = int(aprogress * x1 + progress * x2)
             y = int(aprogress * y1 + progress * y2)
             yield (x, y)
 
-
-    def render(self):
+    def render(self) -> None:
 
         '''
         Renders board screen.
         '''
 
         if self.is_active:
+            prev_pos = self.pointer.position
+            curr_pos = pygame.mouse.get_pos()
 
-            for point in self.replenish():
-                pygame.draw.circle(self.window, self.pointer_color, point, self.thickness)
-            
-            pygame.draw.circle(self.window, self.pointer_color, self.pointer, self.thickness)    
+            if 0 < curr_pos[0] < self.width-1 and 0 < curr_pos[1] < self.heigth-1:          
+                for point in self.fill(prev_pos, curr_pos):
+                    self.pointer.draw(point)
+
+                self.pointer.draw(curr_pos)
+            else:
+                self.pointer.position = None
         
         pygame.display.update()
-       
