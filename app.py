@@ -3,19 +3,13 @@ import time
 import pygame
 
 from window import Board
+from console import Animation
 
-board = Board(resolution=(400, 400))
-
-clock = pygame.time.Clock()
 FPS = 60
+clock = pygame.time.Clock()
 
-counter = 0
-index = 0
-animation = [
-    '.  ',
-    '.. ',
-    '...',
-]
+board = Board((400, 400))
+waiting = Animation()
 
 os.system('cls')
 
@@ -27,14 +21,13 @@ while True:
     board.navigate()    
     board.render()
 
-    if counter < FPS * (4 / 10):
-        counter += 1
+    if waiting.counter < FPS * (4 / 10):
+        waiting.tick()
     else: 
-        counter = 0
-        index = index + 1 if index < len(animation) - 1 else 0
+        waiting.reset()
 
     if board.is_edited:
-        print(f'The artist is painting {animation[index]}', end="\r")
+        print(f'The artist is painting {waiting.frame}', end="\r")
     else:
         print(f'Predicted number is {board.prediction}     ', end="\r")
 
