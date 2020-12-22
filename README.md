@@ -5,7 +5,11 @@ Number Guesser is an simple app that enables you draw whatever you want.
 Program has access to the keras model which has been trained to guess numbers from 0-9. 
 If you want you can modify the model and train it using a custom dataset.
 
-Run the program with the following command `py app.py`
+Run the program with the following command `py guesser.py`
+
+Train and save the model with the following command `py train-model.py`
+
+Run the test suite with the following command `py test-model.py`
 
 ## User guide:
 
