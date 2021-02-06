@@ -1,10 +1,12 @@
 import os
-import cv2
 import sys
+import cv2
+import time
 import getopt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 from PIL import Image
 from tensorflow.keras import models, Input
@@ -54,17 +56,46 @@ def create_model():
     )
     return model
 
+def save_history(h, hdir):
+    fig = plt.figure("History", figsize=(15, 5))
+    fig.suptitle(f"Model: {h.model.name}\n Time: {time.ctime()}")
+    fig.subplots_adjust(top=0.85)
+
+    ax_loss = fig.add_subplot(1, 2, 1)
+    ax_acc = fig.add_subplot(1, 2, 2)
+
+    ax_loss.set_title("Loss")
+    ax_loss.plot(h.history["loss"])
+    ax_loss.plot(h.history["val_loss"])
+    ax_loss.legend(["loss", "val_loss"])
+    ax_loss.set_xlabel("epochs")
+ 
+    ax_acc.set_title("Accuracy")
+    ax_acc.plot(h.history["accuracy"])
+    ax_acc.plot(h.history["val_accuracy"])
+    ax_acc.legend(["acc", "val_acc"])
+    ax_acc.set_xlabel("epochs")
+
+    if not os.path.exists(hdir): 
+        os.makedirs(hdir)
+
+    path = os.path.join(hdir, f"{h.model.name}-{int(time.time())}.png")
+    plt.savefig(path)
+    print(f"Model history has been saved -> {path}")
+
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["name=", "dataset="])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["name=", "dataset=", "hdir="])
     except getopt.error as err:
         sys.exit(2)
 
     name = "model.h5"
+    hdir = "history"
     root = ""
 
     for opt, val in opts:
         if opt == "--name": name = val
+        elif opt == "--hdir": hdir = val
         elif opt == "--dataset": root = val
 
     X_train, y_train = load_data(root) if root else tf.keras.datasets.mnist.load_data()[0]
@@ -79,8 +110,11 @@ if __name__ == "__main__":
         sys.exit(2)
 
     model = create_model()
-    model.compile(optimizers.Adam(lr=.01), loss='categorical_crossentropy', metrics=['accuracy'])
-    model.fit(X_train, y_train, validation_split=.1, epochs=5, batch_size=400, verbose=1, shuffle=1)
-    model.save(name)
+    model._name = name
 
+    model.compile(optimizers.Adam(lr=.01), loss='categorical_crossentropy', metrics=['accuracy'])
+    h = model.fit(X_train, y_train, validation_split=.1, epochs=5, batch_size=400, verbose=1, shuffle=1)
+
+    save_history(h, hdir)
+    model.save(name)
     print(f"Model has been saved -> {name}")
