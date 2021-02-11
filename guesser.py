@@ -1,88 +1,112 @@
+import os
 import numpy as np
 import tkinter as tk
 import matplotlib.pyplot as plt
 
+from PIL import Image, ImageTk
 from mpl_toolkits.axes_grid1 import ImageGrid
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class Prediction(tk.Frame):
-    def __init__(self, parent, *args, **kwargs):
-        tk.Frame.__init__(self, parent, *args, **kwargs)
+    def __init__(self, parent, sc="#707070", si=1, *args, **kwargs):
+        tk.Frame.__init__(self, parent, bg=sc)
 
         self.parent = parent
-        self.label = tk.LabelFrame(self, text="Prediction")
-        self.label.pack(fill="both", expand=1)
-
+        
+        self.container = tk.Frame(self, *args, **kwargs)
+        self.container.pack(expand=1, fill="both", padx=(0, si), pady=(0, si))
+        
         figure = plt.Figure(figsize=(1,1))
         ax = figure.add_subplot(111)
 
-        chart = FigureCanvasTkAgg(figure, self.label)
-        chart.get_tk_widget().pack(fill="both", expand=1)
+        self.chart = FigureCanvasTkAgg(figure, self.container)
+        self.chart.get_tk_widget().pack(fill="both", expand=1)
+        ax.set_title("Predictions")
 
 class Input(tk.Frame):
-    def __init__(self, parent, *args, **kwargs):
-        tk.Frame.__init__(self, parent, *args, **kwargs)
+    def __init__(self, parent, sc="#707070", si=1, *args, **kwargs):
+        tk.Frame.__init__(self, parent, bg=sc)
 
         self.parent = parent
-        self.label = tk.LabelFrame(self, text="Input")
-        self.label.pack(fill="both", expand=1)
+        
+        self.container = tk.Frame(self, *args, **kwargs)
+        self.container.pack(expand=1, fill="both", padx=(0, si), pady=(0, si))
 
         figure = plt.Figure(figsize=(1,1))
-        
-        chart = FigureCanvasTkAgg(figure, self.label)
-        chart.get_tk_widget().pack(fill="both", expand=1)
-
         ax = figure.add_subplot(111)
-        ax.imshow(np.arange(784).reshape((28, 28)))      
+
+        self.chart = FigureCanvasTkAgg(figure, self.container)
+        self.chart.get_tk_widget().pack(fill="both", expand=1)
+
+        ax.imshow(np.arange(784).reshape((28, 28)))
+        ax.set_title("Input image 28x28")
         ax.axis("off")
 
 class Toolbar(tk.Frame):
-    def __init__(self, parent, *args, **kwargs):
-        tk.Frame.__init__(self, parent, *args, **kwargs)
-        self.parent = parent
+    def __init__(self, parent, sc="#707070", si=1, *args, **kwargs):
+        tk.Frame.__init__(self, parent, bg=sc)
 
-        self.pen_button = tk.Button(self, text="pen")
-        self.eraser_button = tk.Button(self, text="eraser")
-        self.predict_button = tk.Button(self, text="predict")
-        self.clear_button = tk.Button(self, text="clear")
-        self.resolution_button = tk.Button(self, text="res")
+        self.parent = parent
         
-        self.pen_button.grid(row=0, column=0)
-        self.eraser_button.grid(row=0, column=1)
-        self.predict_button.grid(row=0, column=2)
-        self.clear_button.grid(row=0, column=3)
-        self.resolution_button.grid(row=0, column=4)
+        self.container = tk.Frame(self, *args, **kwargs)
+        self.container.pack(expand=1, fill="both", padx=(0, si), pady=(0, si))
+        
+        self.load_assets()
 
-class Paint(tk.Canvas):
-     def __init__(self, parent, *args, **kwargs):
-        tk.Canvas.__init__(self, parent, *args, **kwargs)
+        self.pen_button = tk.Button(self.container, image=self.img_brush, bg="white", activebackground="white", relief="flat", border=0)
+        self.eraser_button = tk.Button(self.container, image=self.img_eraser, bg="white", activebackground="white", relief="flat", border=0)
+        self.clear_button = tk.Button(self.container, image=self.img_delete, bg="white", activebackground="white", relief="flat", border=0)
+        self.resize_button = tk.Button(self.container, image=self.img_resize, bg="white", activebackground="white", relief="flat", border=0)
+        self.select_button = tk.Button(self.container, image=self.img_select, bg="white", activebackground="white", relief="flat", border=0)
+        
+        self.pen_button.grid(row=0, column=0, padx=10, pady=10)
+        self.eraser_button.grid(row=0, column=1, padx=10, pady=10)
+        self.clear_button.grid(row=0, column=3, padx=10, pady=10)
+        self.resize_button.grid(row=0, column=4, padx=10, pady=10)
+        self.select_button.grid(row=0, column=5, padx=10, pady=10)
+
+    def load_assets(self):
+        self.img_brush = ImageTk.PhotoImage(Image.open(os.path.join("assets", "brush.png")))
+        self.img_eraser = ImageTk.PhotoImage(Image.open(os.path.join("assets", "eraser.png")))
+        self.img_delete = ImageTk.PhotoImage(Image.open(os.path.join("assets", "delete.png")))
+        self.img_resize = ImageTk.PhotoImage(Image.open(os.path.join("assets", "resize.png")))
+        self.img_select = ImageTk.PhotoImage(Image.open(os.path.join("assets", "select.png")))
+
+class Paint(tk.Frame):
+     def __init__(self, parent, sc="#707070", si=1, *args, **kwargs):
+        tk.Frame.__init__(self, parent, bg=sc)
         self.parent = parent
 
-        self.rowconfigure([0,1,2,3,4,5,6,7,8,9], weight=1)  
-        self.columnconfigure(1, weight=1)
+        self.container = tk.Canvas(self, *args, **kwargs)
+        self.container.pack(expand=1, fill="both", padx=(0, si), pady=(0, si))
 
-        self.toolbar_component = Toolbar(self)  
+        self.container.rowconfigure([0,1,2,3,4,5,6,7,8,9], weight=1)  
+        self.container.columnconfigure([0,1,2], weight=1)
+
+        self.toolbar_component = Toolbar(self.container, bg="white", highlightbackground="#949292", highlightcolor="#949292", highlightthickness=1)  
         self.toolbar_component.grid(row=9, column=1)
 
 class Guesser(tk.Tk):
     def __init__(self, width, height, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
 
+        self.configure(bg="white")
         self.rowconfigure([0, 1], weight=1)  
         self.columnconfigure([0, 1, 2], weight=1)
 
-        self.paint_component = Paint(self, bg="white")  
-        self.input_component = Input(self) 
-        self.prediction_component = Prediction(self) 
+        self.paint_component = Paint(self, bg="white", highlightbackground="#949292", highlightcolor="#949292", highlightthickness=1)  
+        self.input_component = Input(self, bg="white", highlightbackground="#949292", highlightcolor="#949292", highlightthickness=1) 
+        self.prediction_component = Prediction(self, bg="white", highlightbackground="#949292", highlightcolor="#949292", highlightthickness=1) 
 
-        self.paint_component.grid(rowspan=2, columnspan=2, sticky="nwse")
-        self.input_component.grid(row=0, column=2, sticky="nwse")
-        self.prediction_component.grid(row=1, column=2, sticky="nwse")
+        self.paint_component.grid(rowspan=2, columnspan=2, sticky="nwse", padx=10, pady=10)
+        self.input_component.grid(row=0, column=2, sticky="nwse", padx=(0,10), pady=(10,5))
+        self.prediction_component.grid(row=1, column=2, sticky="nwse", padx=(0,10), pady=(5,10))
 
         self.geometry(f"{width}x{height}")
         self.minsize(width=width, height=height)
+        self.iconphoto(False, tk.PhotoImage(file=os.path.join("assets", "icon.png")))
         self.title("Number quesser")
         self.mainloop()
 
 if __name__ == '__main__': 
-    Guesser(1200, 700)
+    Guesser(1000, 500)
