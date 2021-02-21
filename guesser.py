@@ -61,6 +61,7 @@ class Toolbar(tk.Frame):
         self.clear_button.pack(side="left",  padx=5, pady=10)
         self.select_button.pack(side="left", padx=(5,10), pady=10)
 
+        self.bind("<Enter>", self.master.handle_on_cursor_leave)
         self.fg_button.bind("<Button-1>",     self.master.change_foreground)
         self.bg_button.bind("<Button-1>",     self.master.change_background)
         self.width_button.bind("<Button-1>",  self.master.toggle_width_scale)
@@ -89,9 +90,12 @@ class Paint(tk.Canvas):
         self.width = self.winfo_reqwidth()
         self.height = self.winfo_reqheight()
 
-        self.mode = 0
+        self.input = None
+        self.cursor = None
+
         self.x = None
         self.y = None
+        self.mode = 0
         self.line_width = 5
         self.foreground = "black"
         self.background = "white"
@@ -126,13 +130,10 @@ class Paint(tk.Canvas):
         self.itemconfig("eraser", fill=self.background)
 
     def toggle_width_scale(self, e):
-        if e.widget.cget("relief") == "raised":
-            self.width_scale.grid()
-            e.widget.config(relief="sunken")
-
-        elif e.widget.cget("relief") == "sunken":
+        if self.width_scale.winfo_ismapped():
             self.width_scale.grid_remove()
-            e.widget.config(relief="raised")
+        else:
+            self.width_scale.grid()
 
     def update_width(self, e):
         self.line_width = self.width_scale.scale.get()
@@ -144,6 +145,9 @@ class Paint(tk.Canvas):
             self.toolbar.select_button: self.SELECTOR
         }[e.widget]
 
+    def clear_canvas(self, e):
+        self.delete("all")
+
     def handle_on_resize(self, e):
         wscale = float(e.width) / self.width
         hscale = float(e.height) / self.height
@@ -154,19 +158,20 @@ class Paint(tk.Canvas):
         self.scale("all", 0, 0, wscale, hscale)
 
     def handle_on_cursor_motion(self, e):
-        x1, y1 = (e.x - self.line_width/2), (e.y - self.line_width/2)
-        x2, y2 = (e.x + self.line_width/2), (e.y + self.line_width/2)
-
-        if self.mode == self.BRUSH:
-            self.delete("cursor")
-            self.create_oval(x1, y1, x2, y2, fill=self.foreground, outline="black", tag="cursor")
+        if self.mode in (self.BRUSH, self.ERASER):
+            x1, y1 = (e.x - self.line_width/2), (e.y - self.line_width/2)
+            x2, y2 = (e.x + self.line_width/2), (e.y + self.line_width/2)
             
-        elif self.mode == self.ERASER:
-            self.delete("cursor")
-            self.create_rectangle(x1, y1, x2, y2, fill=self.background, outline="black", tag="cursor")
+            self.delete(self.cursor)
+
+            if self.mode == self.BRUSH:
+                self.cursor = self.create_oval(x1, y1, x2, y2, fill=self.foreground)
+                
+            elif self.mode == self.ERASER:
+                self.cursor = self.create_rectangle(x1, y1, x2, y2, fill=self.background, outline="black")
 
     def handle_on_cursor_leave(self, e):
-        self.delete("cursor")
+        self.delete(self.cursor)
 
     def handle_on_click(self, e):
         self.x = e.x
@@ -176,19 +181,19 @@ class Paint(tk.Canvas):
         x2, y2 = (self.x + self.line_width/2), (self.y + self.line_width/2)
 
         if self.mode == self.BRUSH:
-            self.create_oval(x1, y1, x2, y2, fill=self.foreground, outline=self.foreground)
+            self.create_oval(x1, y1, x2, y2, fill=self.foreground, outline=self.foreground, tag="brush")
 
         elif self.mode == self.ERASER:
-            self.create_rectangle(x1, y1, x2, y2, fill=self.background, outline=self.background)
+            self.create_rectangle(x1, y1, x2, y2, fill=self.background, outline=self.background, tag="eraser")
 
         elif self.mode == self.SELECTOR:
-            # Init a rect
-            pass
+            self.input = self.create_rectangle(self.x, self.y, self.x, self.y, outline="black", width=1)
 
     def handle_on_motion(self, e):
         if self.x and self.y:
-            if self.mode == self.BRUSH:
-                self.create_line(self.x, self.y, e.x, e.y, 
+            if self.mode in (self.BRUSH, self.ERASER):
+                if self.mode == self.BRUSH:
+                    self.create_line(self.x, self.y, e.x, e.y, 
                                      width=self.line_width, 
                                      fill=self.foreground, 
                                      capstyle="round", 
@@ -196,8 +201,8 @@ class Paint(tk.Canvas):
                                      splinesteps=36,
                                      tag="brush")
 
-            elif self.mode == self.ERASER:
-                self.create_line(self.x, self.y, e.x, e.y, 
+                elif self.mode == self.ERASER:
+                    self.create_line(self.x, self.y, e.x, e.y, 
                                      width=self.line_width, 
                                      fill=self.background, 
                                      capstyle="projecting", 
@@ -205,19 +210,15 @@ class Paint(tk.Canvas):
                                      splinesteps=40,
                                      tag="eraser")
 
+                self.x = e.x
+                self.y = e.y
+
             elif self.mode == self.SELECTOR:
-                # Create a rect
-                pass
-            
-        self.x = e.x
-        self.y = e.y
+                self.coords(self.input, self.x, self.y, e.x, e.y)
 
     def handle_on_release(self, e):
         self.x = None
         self.y = None
-
-    def clear_canvas(self, e):
-        self.delete("all")
 
 class Guesser(tk.Tk):
     def __init__(self, width, height, *args, **kwargs):
