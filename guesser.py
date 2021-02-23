@@ -8,63 +8,49 @@ from PIL import ImageGrab
 from tkinter.colorchooser import askcolor
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-class Chart(tk.Frame):
+class BarChart(tk.Frame):
     def __init__(self, master=None, *args, **kwargs):
         tk.Frame.__init__(self, master, *args, **kwargs)
         self.master = master
-        self.model = tf.keras.models.load_model("model.h5")
 
         figure = plt.Figure(figsize=(1,1))
         ax = figure.add_subplot(111)
 
-        self.chart = FigureCanvasTkAgg(figure, self)
-        self.chart.get_tk_widget().pack(fill="both", expand=1)
-        
+        self.canvas = FigureCanvasTkAgg(figure, self)
+        self.canvas.get_tk_widget().pack(fill="both", expand=1)
+        self.bars = ax.bar(range(10), np.zeros(10), color="#777777")
+
         ax.set_title("Predictions")
         ax.set_xticks(range(10))
         ax.set_yticks([0, .5, 1])
         ax.set_ylim([0, 1])
 
-        self.bars = ax.bar(range(10), np.zeros(10), color="#777777")
-
-    def plot_prediction(self):
-        img = self.master.input.img.reshape(1, *self.master.input.img.shape)
-        [ prediction ] = self.model.predict(img)
-
-        ax = self.chart.figure.gca()
-
+    def plot(self, predictions):
+        ax = self.canvas.figure.gca()
         self.bars.remove()
-        self.bars = ax.bar(range(10), prediction, color="#777777")
-        self.bars[np.argmax(prediction)].set_color('orange')
-        self.chart.figure.canvas.draw()
+        self.bars = ax.bar(range(10), predictions, color="#777777")
+        self.bars[np.argmax(predictions)].set_color('orange')
+        self.canvas.figure.canvas.draw()
 
 class Input(tk.Frame):
     def __init__(self, master=None, *args, **kwargs):
         tk.Frame.__init__(self, master, *args, **kwargs)
         self.master = master
 
-        self.img = np.ones(784).reshape((28, 28, 1))
-
         figure = plt.Figure(figsize=(1,1))
         ax = figure.add_subplot(111)
 
-        self.chart = FigureCanvasTkAgg(figure, self)
-        self.chart.get_tk_widget().pack(fill="both", expand=1)
+        self.canvas = FigureCanvasTkAgg(figure, self)
+        self.canvas.get_tk_widget().pack(fill="both", expand=1)
 
-        ax.imshow(self.img, cmap="gray", vmin=0, vmax=1)
+        ax.imshow(np.ones(784).reshape((28, 28, 1)), cmap="gray", vmin=0, vmax=1)
         ax.set_title("Input image 28x28")
         ax.axis("off")
 
-    def update_image(self, src):
-        self.img = src.resize((28, 28))
-        self.img = self.img.convert("L")
-        self.img = np.array(self.img)
-        self.img = self.img.reshape(*self.img.shape, 1)
-        self.img = self.img / 255
-
-        ax = self.chart.figure.gca()
-        ax.imshow(self.img, cmap="gray", vmin=0, vmax=1)
-        self.chart.figure.canvas.draw()
+    def plot(self, img):
+        ax = self.canvas.figure.gca()
+        ax.imshow(img, cmap="gray", vmin=0, vmax=1)
+        self.canvas.figure.canvas.draw()
 
 class Toolbar(tk.Frame):
     def __init__(self, master=None, *args, **kwargs):
@@ -263,17 +249,17 @@ class Paint(tk.Canvas):
                                        bbox[1] + self.winfo_rooty() + 1, 
                                        bbox[2] + self.winfo_rootx(),
                                        bbox[3] + self.winfo_rooty()))
-            self.master.input.update_image(img)
-            self.master.chart.plot_prediction()
+            self.master.guess(img)
             self.delete("selector", "selector-size")
 
 class Guesser(tk.Tk):
     def __init__(self, width, height, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
+        self.model = tf.keras.models.load_model("model.h5")
 
         self.paint = Paint(self, bg="white", bd=2, relief="raised", highlightthickness=0)
         self.input = Input(self, bg="white", bd=2, relief="raised") 
-        self.chart = Chart(self, bg="white", bd=2, relief="raised") 
+        self.chart = BarChart(self, bg="white", bd=2, relief="raised") 
 
         self.rowconfigure([0,1], weight=1)  
         self.columnconfigure([0,1,2], weight=1)
@@ -289,5 +275,17 @@ class Guesser(tk.Tk):
         self.title("Number quesser")
         self.mainloop()
 
+    def guess(self, src):
+        img = src.resize((28, 28))
+        img = img.convert("L")
+        img = np.array(img)
+        img = img.reshape(*img.shape, 1)
+        img = img / 255
+        self.input.plot(img)
+
+        img = img.reshape(1, *img.shape)
+        [ prediction ] = self.model.predict(img)
+        self.chart.plot(prediction)
+
 if __name__ == "__main__": 
-    Guesser(900, 600)
+    Guesser(1000, 600)
