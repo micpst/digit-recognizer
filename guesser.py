@@ -3,6 +3,7 @@ import numpy as np
 import tkinter as tk
 import matplotlib.pyplot as plt
 
+from PIL import ImageGrab
 from tkinter.colorchooser import askcolor
 from mpl_toolkits.axes_grid1 import ImageGrid
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -24,15 +25,28 @@ class Input(tk.Frame):
         tk.Frame.__init__(self, master, *args, **kwargs)
         self.master = master
 
+        self.img = np.ones(784).reshape((28, 28, 1))
+
         figure = plt.Figure(figsize=(1,1))
         ax = figure.add_subplot(111)
 
         self.chart = FigureCanvasTkAgg(figure, self)
         self.chart.get_tk_widget().pack(fill="both", expand=1)
-
-        ax.imshow(np.arange(784).reshape((28, 28)))
+        
+        ax.imshow(self.img, cmap="gray", vmin=0, vmax=1)
         ax.set_title("Input image 28x28")
         ax.axis("off")
+
+    def update_image(self, src):
+        self.img = src.resize((28, 28))
+        self.img = self.img.convert("L")
+        self.img = np.array(self.img)
+        self.img = self.img.reshape(*self.img.shape, 1)
+        self.img = self.img / 255
+
+        ax = self.chart.figure.gca()
+        ax.imshow(self.img, cmap="gray", vmin=0, vmax=1)
+        self.chart.figure.canvas.draw()
 
 class Toolbar(tk.Frame):
     def __init__(self, master=None, *args, **kwargs):
@@ -89,9 +103,6 @@ class Paint(tk.Canvas):
 
         self.width = self.winfo_reqwidth()
         self.height = self.winfo_reqheight()
-
-        self.input = None
-        self.cursor = None
 
         self.x = None
         self.y = None
@@ -162,16 +173,16 @@ class Paint(tk.Canvas):
             x1, y1 = (e.x - self.line_width/2), (e.y - self.line_width/2)
             x2, y2 = (e.x + self.line_width/2), (e.y + self.line_width/2)
             
-            self.delete(self.cursor)
+            self.delete("cursor")
 
             if self.mode == self.BRUSH:
-                self.cursor = self.create_oval(x1, y1, x2, y2, fill=self.foreground)
+                self.create_oval(x1, y1, x2, y2, fill=self.foreground, tag="cursor")
                 
             elif self.mode == self.ERASER:
-                self.cursor = self.create_rectangle(x1, y1, x2, y2, fill=self.background, outline="black")
+                self.create_rectangle(x1, y1, x2, y2, fill=self.background, outline="black", tag="cursor")
 
     def handle_on_cursor_leave(self, e):
-        self.delete(self.cursor)
+        self.delete("cursor")
 
     def handle_on_click(self, e):
         self.x = e.x
@@ -187,7 +198,8 @@ class Paint(tk.Canvas):
             self.create_rectangle(x1, y1, x2, y2, fill=self.background, outline=self.background, tag="eraser")
 
         elif self.mode == self.SELECTOR:
-            self.input = self.create_rectangle(self.x, self.y, self.x, self.y, outline="black", width=1)
+            self.create_text(self.x, self.y, text="0x0", anchor="sw", tag="selector-size")
+            self.create_rectangle(self.x, self.y, self.x, self.y, outline="black", width=1, tag="selector")
 
     def handle_on_motion(self, e):
         if self.x and self.y:
@@ -214,11 +226,27 @@ class Paint(tk.Canvas):
                 self.y = e.y
 
             elif self.mode == self.SELECTOR:
-                self.coords(self.input, self.x, self.y, e.x, e.y)
+                dx = e.x - self.x
+                dy = e.y - self.y
+
+                anchor  = "n" if dy < 0 else "s"
+                anchor += "w" if dx < 0 else "e"
+
+                self.itemconfigure("selector-size", text=f"{abs(dx)}x{abs(dy)}", anchor=anchor)
+                self.coords("selector", self.x, self.y, e.x, e.y)
 
     def handle_on_release(self, e):
         self.x = None
         self.y = None
+
+        if self.mode == self.SELECTOR:
+            bbox = self.coords("selector")
+            img = ImageGrab.grab(bbox=(bbox[0] + self.winfo_rootx() + 1, 
+                                       bbox[1] + self.winfo_rooty() + 1, 
+                                       bbox[2] + self.winfo_rootx(),
+                                       bbox[3] + self.winfo_rooty()))
+            self.master.input.update_image(img)
+            self.delete("selector", "selector-size")
 
 class Guesser(tk.Tk):
     def __init__(self, width, height, *args, **kwargs):
