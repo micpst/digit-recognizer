@@ -1,24 +1,42 @@
 import os
 import numpy as np
 import tkinter as tk
+import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from PIL import ImageGrab
 from tkinter.colorchooser import askcolor
-from mpl_toolkits.axes_grid1 import ImageGrid
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class Chart(tk.Frame):
     def __init__(self, master=None, *args, **kwargs):
         tk.Frame.__init__(self, master, *args, **kwargs)
         self.master = master
-        
+        self.model = tf.keras.models.load_model("model.h5")
+
         figure = plt.Figure(figsize=(1,1))
         ax = figure.add_subplot(111)
 
         self.chart = FigureCanvasTkAgg(figure, self)
         self.chart.get_tk_widget().pack(fill="both", expand=1)
+        
         ax.set_title("Predictions")
+        ax.set_xticks(range(10))
+        ax.set_yticks([0, .5, 1])
+        ax.set_ylim([0, 1])
+
+        self.bars = ax.bar(range(10), np.zeros(10), color="#777777")
+
+    def plot_prediction(self):
+        img = self.master.input.img.reshape(1, *self.master.input.img.shape)
+        [ prediction ] = self.model.predict(img)
+
+        ax = self.chart.figure.gca()
+
+        self.bars.remove()
+        self.bars = ax.bar(range(10), prediction, color="#777777")
+        self.bars[np.argmax(prediction)].set_color('orange')
+        self.chart.figure.canvas.draw()
 
 class Input(tk.Frame):
     def __init__(self, master=None, *args, **kwargs):
@@ -32,7 +50,7 @@ class Input(tk.Frame):
 
         self.chart = FigureCanvasTkAgg(figure, self)
         self.chart.get_tk_widget().pack(fill="both", expand=1)
-        
+
         ax.imshow(self.img, cmap="gray", vmin=0, vmax=1)
         ax.set_title("Input image 28x28")
         ax.axis("off")
@@ -246,6 +264,7 @@ class Paint(tk.Canvas):
                                        bbox[2] + self.winfo_rootx(),
                                        bbox[3] + self.winfo_rooty()))
             self.master.input.update_image(img)
+            self.master.chart.plot_prediction()
             self.delete("selector", "selector-size")
 
 class Guesser(tk.Tk):
@@ -271,4 +290,4 @@ class Guesser(tk.Tk):
         self.mainloop()
 
 if __name__ == "__main__": 
-    Guesser(1000, 500)
+    Guesser(900, 600)
