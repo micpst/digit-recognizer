@@ -64,7 +64,7 @@ class Toolbar(tk.Frame):
         self.brush_button = tk.Button(self, image=self.master.img_brush,  bg="white", activebackground="white", border=0)
         self.eraser_button = tk.Button(self, image=self.master.img_eraser, bg="white", activebackground="white", border=0)
         self.clear_button = tk.Button(self, image=self.master.img_delete, bg="white", activebackground="white", border=0)
-        self.select_button = tk.Button(self, image=self.master.img_select, bg="white", activebackground="white", border=0)
+        self.select_button = tk.Button(self, image=self.master.img_select, bg="white", activebackground="white", border=0, state="disabled")
         
         self.fg_button.pack(side="top", padx=10, pady=10)
         self.bg_button.pack(side="top", padx=10, pady=10)
@@ -98,6 +98,12 @@ class Toolbar(tk.Frame):
             self.eraser_button: Paint.ERASER,
             self.select_button: Paint.SELECTOR,
         }[e.widget]
+
+    def unlock_select_button(self):
+        self.select_button["state"] = "normal"
+
+    def lock_select_button(self):
+        self.select_button["state"] = "disabled"
 
     def clear_canvas(self, e):
         self.master.paint_component.delete("all")
@@ -242,26 +248,60 @@ class ModelLoader(tk.Frame):
     def __init__(self, master, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
         self.master= master
-        
-        self.info_label = tk.Label(self, text="Model: -", font="12", bg="white")
-        self.acc_label = tk.Label(self, text="Accuracy: 0%", font="12", bg="white")
+
+        self.name_label = tk.Label(self, text="Name: -", anchor="w", width=15, font="12", bg="white")
+        self.acc_label = tk.Label(self, text="Model acc: 0.00%", font="12", bg="white")
         self.state_label = tk.Label(self, text="Not loaded", font="12", bg="white")
         self.load_button = tk.Button(self, text="Load")
-        self.progressbar = tk.ttk.Progressbar(self)
+        self.progressbar = ttk.Progressbar(self)
 
         self.rowconfigure([0,1], weight=1)
         self.columnconfigure(1, weight=1)
 
-        self.info_label.grid(row=0, column=0, sticky="nws", padx=10, pady=10)
+        self.name_label.grid(row=0, column=0, sticky="nws", padx=10, pady=10)
         self.progressbar.grid(row=0, column=1, sticky="nwse", pady=10)
         self.load_button.grid(row=0, column=2, sticky="nwse", padx=10, pady=10)
         self.acc_label.grid(row=1, column=0, sticky="nws", padx=10, pady=(0,10))
         self.state_label.grid(row=1, column=1, sticky="nes", pady=(0,10))
+
+        self.load_button.bind("<Button-1>", self.load)
         
+    def load(self, e):
+        filepath = tk.filedialog.askopenfilename(initialdir="./", title="Select file", filetypes=(("h5 files","*.h5"),))
+        if filepath:
+            self.progressbar["value"] = 30
+            self.state_label["text"] = "Loading"
+            self.update_idletasks()
+            self.update()
+
+            model = tf.keras.models.load_model(filepath)
+
+            self.progressbar["value"] = 60
+            self.state_label["text"] = "Testing"
+            self.update_idletasks()
+            self.update()
+
+            acc = self.test(model)
+
+            self.progressbar["value"] = 100
+            self.state_label["text"] = "Completed"
+
+            self.name_label["text"] = f"Name: {model._name}"
+            self.acc_label["text"] = f"Model acc: {acc * 100:5.2f}%"
+            self.master.model = model
+            
+    def test(self, model):
+        (_,_), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
+        y_test = tf.keras.utils.to_categorical(y_test, 10)
+        X_test = X_test.reshape(*X_test.shape, 1)
+        X_test = X_test / 255
+        _, acc = model.evaluate(X_test, y_test, verbose=0)
+        return acc
+
 class Guesser(tk.Tk):
     def __init__(self, width, height, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
-        self.model = tf.keras.models.load_model("model.h5")
+        self._model = None
 
         self.minsize(width=width, height=height)
         self.configure(bg="white")
@@ -269,16 +309,15 @@ class Guesser(tk.Tk):
         self.load_assets()
 
         self.rowconfigure([1,2], weight=1)
-        self.columnconfigure(0, weight=0)
         self.columnconfigure(1, weight=3)
         self.columnconfigure(2, weight=1)
 
         self.paint_component = Paint(self, bg="white", bd=2, relief="raised", highlightthickness=0)
         self.toolbar_component = Toolbar(self, bg="white", bd=2, relief="raised")
-        self.width_scale_component = WidthScale(self, bg="white", bd=2, relief="raised")
         self.model_loader_component = ModelLoader(self, bg="white", bd=2, relief="raised", height=90)
         self.input_img_component = InputImage(self, bg="white", bd=2, relief="raised")
         self.bar_chart_component = BarChart(self, bg="white", bd=2, relief="raised")
+        self.width_scale_component = WidthScale(self, bg="white", bd=2, relief="raised")
         
         self.paint_component.grid(row=0, column=1, rowspan=3, sticky="nwse", padx=(0,10), pady=10)
         self.toolbar_component.grid(row=0, column=0, rowspan=3, sticky="nwse", padx=(10,0), pady=10)
@@ -291,6 +330,20 @@ class Guesser(tk.Tk):
         self.iconphoto(False, self.img_icon)
         self.title("Number quesser")
         self.mainloop()
+
+    @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self, new):
+        if new:
+            self.title(f"Number quesser - {new._name}")
+            self.toolbar_component.unlock_select_button()
+        else:
+            self.title(f"Number quesser")
+            self.toolbar_component.lock_select_button()
+        self._model = new
 
     def load_assets(self):
         self.img_icon = tk.PhotoImage(file=os.path.join("assets", "icon.png"))
