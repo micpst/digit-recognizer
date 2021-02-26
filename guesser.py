@@ -4,6 +4,7 @@ import tkinter as tk
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+from tkinter import ttk
 from PIL import ImageGrab
 from tkinter.colorchooser import askcolor
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -232,16 +233,31 @@ class WidthScale(tk.Frame):
         self.master = master
         self.scale_component = tk.Scale(self, bg="white", bd=0, highlightthickness=0, orient="horizontal", from_=5, to=20)
         self.scale_component.pack(padx=(0,10), pady=(5,10))
-        self.scale_component.bind("<ButtonRelease-1>", self.update_width)
+        self.scale_component.bind("<ButtonRelease-1>", self.handle_on_button_release)
 
-    def update_width(self, e):
+    def handle_on_button_release(self, e):
         self.master.paint_component.line_width = self.scale_component.get()
 
 class ModelLoader(tk.Frame):
     def __init__(self, master, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
         self.master= master
+        
+        self.info_label = tk.Label(self, text="Model: -", font="12", bg="white")
+        self.acc_label = tk.Label(self, text="Accuracy: 0%", font="12", bg="white")
+        self.state_label = tk.Label(self, text="Not loaded", font="12", bg="white")
+        self.load_button = tk.Button(self, text="Load")
+        self.progressbar = tk.ttk.Progressbar(self)
 
+        self.rowconfigure([0,1], weight=1)
+        self.columnconfigure(1, weight=1)
+
+        self.info_label.grid(row=0, column=0, sticky="nws", padx=10, pady=10)
+        self.progressbar.grid(row=0, column=1, sticky="nwse", pady=10)
+        self.load_button.grid(row=0, column=2, sticky="nwse", padx=10, pady=10)
+        self.acc_label.grid(row=1, column=0, sticky="nws", padx=10, pady=(0,10))
+        self.state_label.grid(row=1, column=1, sticky="nes", pady=(0,10))
+        
 class Guesser(tk.Tk):
     def __init__(self, width, height, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -253,7 +269,9 @@ class Guesser(tk.Tk):
         self.load_assets()
 
         self.rowconfigure([1,2], weight=1)
-        self.columnconfigure([1,2,3], weight=1)
+        self.columnconfigure(0, weight=0)
+        self.columnconfigure(1, weight=3)
+        self.columnconfigure(2, weight=1)
 
         self.paint_component = Paint(self, bg="white", bd=2, relief="raised", highlightthickness=0)
         self.toolbar_component = Toolbar(self, bg="white", bd=2, relief="raised")
@@ -262,11 +280,11 @@ class Guesser(tk.Tk):
         self.input_img_component = InputImage(self, bg="white", bd=2, relief="raised")
         self.bar_chart_component = BarChart(self, bg="white", bd=2, relief="raised")
         
-        self.paint_component.grid(row=0, column=1, rowspan=3, columnspan=2, sticky="nwse", padx=(0,10), pady=10)
+        self.paint_component.grid(row=0, column=1, rowspan=3, sticky="nwse", padx=(0,10), pady=10)
         self.toolbar_component.grid(row=0, column=0, rowspan=3, sticky="nwse", padx=(10,0), pady=10)
-        self.model_loader_component.grid(row=0, column=3, sticky="nwse", padx=(0,10), pady=(10,0))
-        self.input_img_component.grid(row=1, column=3, sticky="nwse", padx=(0,10), pady=(10,0))
-        self.bar_chart_component.grid(row=2, column=3, sticky="nwse", padx=(0,10), pady=10)
+        self.model_loader_component.grid(row=0, column=2, sticky="nwse", padx=(0,10), pady=(10,0))
+        self.input_img_component.grid(row=1, column=2, sticky="nwse", padx=(0,10), pady=(10,0))
+        self.bar_chart_component.grid(row=2, column=2, sticky="nwse", padx=(0,10), pady=10)
         self.width_scale_component.grid(row=1, column=1, sticky="nw")
         self.width_scale_component.grid_remove()
 
