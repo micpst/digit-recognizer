@@ -1,11 +1,9 @@
-# Number Guesser
+# Digit Recognizer
 
 Draw a number and see if machine can guess it.
 
 Program has access to the keras model which has been trained to guess numbers from 0-9. 
 If you want you can modify the model and train it using a custom dataset.
-
-Currently, it is recommended to use default model name - model.h5 as the guesser app does not support custom names unless you change it manually in the code :)
 
 ## Quick start:
 
@@ -32,9 +30,9 @@ py test-model.py
 py test-model.py --name=my_model.h5 --dataset=test_dataset_dir
 ```
 
-### Run the guesser
+### Run the recognizer
 ```
-py guesser.py 
+py recognizer.py 
 ```
 
 ## Dependencies:
