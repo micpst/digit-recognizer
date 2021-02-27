@@ -5,7 +5,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from tkinter import ttk
-from PIL import ImageGrab
+from PIL import ImageGrab, ImageOps
 from tkinter.colorchooser import askcolor
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -365,6 +365,7 @@ class App(tk.Tk):
     def recognize(self, src):
         img = src.resize((28, 28))
         img = img.convert("L")
+        img = ImageOps.equalize(img)
         img = np.array(img)
         img = img.reshape(*img.shape, 1)
         img = img / 255
