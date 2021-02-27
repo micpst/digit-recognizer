@@ -1,6 +1,5 @@
 import os
 import sys
-import cv2
 import time
 import getopt
 import numpy as np
@@ -8,7 +7,7 @@ import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from PIL import Image
+from PIL import Image, ImageOps
 from tensorflow.keras import models, Input
 from tensorflow.keras import layers
 from tensorflow.keras import optimizers
@@ -21,10 +20,10 @@ def load_data(path):
         for file in files:
             if ".png" in file:
                 img = Image.open(os.path.join(root, file))
-                img = np.asarray(img)
-                img = cv2.resize(img, (28, 28))
-                img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-                img = cv2.equalizeHist(img)
+                img = img.resize((28, 28))
+                img = img.convert("L")
+                img = ImageOps.equalize(img)
+                img = np.array(img)
                 img = img.reshape(1, *img.shape)
                 X = np.vstack((X, img))
 

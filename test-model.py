@@ -1,12 +1,11 @@
 import os
-import cv2
 import sys
 import getopt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 def load_data(path):
     X = np.array([]).reshape((0, 28, 28))
@@ -16,10 +15,10 @@ def load_data(path):
         for file in files:
             if ".png" in file:
                 img = Image.open(os.path.join(root, file))
-                img = np.asarray(img)
-                img = cv2.resize(img, (28, 28))
-                img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-                img = cv2.equalizeHist(img)
+                img = img.resize((28, 28))
+                img = img.convert("L")
+                img = ImageOps.equalize(img)
+                img = np.array(img)
                 img = img.reshape(1, *img.shape)
                 X = np.vstack((X, img))
 
