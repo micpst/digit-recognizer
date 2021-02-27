@@ -42,7 +42,6 @@ py recognizer.py
 - pillow 8.1.0
 - tensorflow 2.4.1
 - matplotlib 3.3.4
-- opencv-python 4.5.1.48
 
 ## License
 All my code is MIT licensed. Libraries follow their respective licenses.
