@@ -46,7 +46,8 @@ class InputImage(tk.Frame):
 
         ax.imshow(np.ones(784).reshape((28, 28, 1)), cmap="gray", vmin=0, vmax=1)
         ax.set_title("Input image 28x28")
-        ax.axis("off")
+        ax.set_xticks([])
+        ax.set_yticks([])
 
     def plot(self, img):
         ax = self.canvas.figure.gca()
@@ -58,13 +59,13 @@ class Toolbar(tk.Frame):
         tk.Frame.__init__(self, master, *args, **kwargs)
         self.master = master
 
-        self.fg_button = tk.Button(self, padx=8, pady=1, bg=self.master.paint_component.foreground, relief="sunken")
-        self.bg_button = tk.Button(self, padx=8, pady=1, bg=self.master.paint_component.background, relief="sunken")
-        self.width_button = tk.Button(self, image=self.master.img_width,  bg="white", activebackground="white", border=0)
-        self.brush_button = tk.Button(self, image=self.master.img_brush,  bg="white", activebackground="white", border=0)
-        self.eraser_button = tk.Button(self, image=self.master.img_eraser, bg="white", activebackground="white", border=0)
-        self.clear_button = tk.Button(self, image=self.master.img_delete, bg="white", activebackground="white", border=0)
-        self.select_button = tk.Button(self, image=self.master.img_select, bg="white", activebackground="white", border=0, state="disabled")
+        self.fg_button = tk.Button(self, padx=8, pady=1, bg=self.master.paint_component.foreground, relief="sunken", cursor="hand2")
+        self.bg_button = tk.Button(self, padx=8, pady=1, bg=self.master.paint_component.background, relief="sunken", cursor="hand2")
+        self.width_button = tk.Button(self, image=self.master.img_width, cursor="hand2", bg="white", activebackground="white", border=0)
+        self.brush_button = tk.Button(self, image=self.master.img_brush, cursor="hand2", bg="white", activebackground="white", border=0)
+        self.eraser_button = tk.Button(self, image=self.master.img_eraser, cursor="hand2", bg="white", activebackground="white", border=0)
+        self.clear_button = tk.Button(self, image=self.master.img_delete, cursor="hand2", bg="white", activebackground="white", border=0)
+        self.select_button = tk.Button(self, image=self.master.img_select, cursor="hand2", bg="white", activebackground="white", border=0, state="disabled")
         
         self.fg_button.pack(side="top", padx=10, pady=10)
         self.bg_button.pack(side="top", padx=10, pady=10)
@@ -252,7 +253,7 @@ class ModelLoader(tk.Frame):
         self.name_label = tk.Label(self, text="Name: -", anchor="w", width=15, font="12", bg="white")
         self.acc_label = tk.Label(self, text="Model acc: 0.00%", font="12", bg="white")
         self.state_label = tk.Label(self, text="Not loaded", font="12", bg="white")
-        self.load_button = tk.Button(self, text="Load")
+        self.load_button = tk.Button(self, image=self.master.img_open, cursor="hand2", bg="white", activebackground="white", border=0)
         self.progressbar = ttk.Progressbar(self)
 
         self.rowconfigure([0,1], weight=1)
@@ -270,24 +271,25 @@ class ModelLoader(tk.Frame):
         filepath = tk.filedialog.askopenfilename(initialdir="./", title="Select file", filetypes=(("h5 files","*.h5"),))
         if filepath:
             self.progressbar["value"] = 30
-            self.state_label["text"] = "Loading"
+            self.state_label["text"] = "Loading - 30%"
             self.update_idletasks()
             self.update()
 
             model = tf.keras.models.load_model(filepath)
 
             self.progressbar["value"] = 60
-            self.state_label["text"] = "Testing"
+            self.state_label["text"] = "Testing - 60%"
             self.update_idletasks()
             self.update()
 
             acc = self.test(model)
 
             self.progressbar["value"] = 100
-            self.state_label["text"] = "Completed"
+            self.state_label["text"] = "Completed - 100%"
 
             self.name_label["text"] = f"Name: {model._name}"
             self.acc_label["text"] = f"Model acc: {acc * 100:5.2f}%"
+            self.load_button["relief"] = "raised"
             self.master.model = model
             
     def test(self, model):
@@ -314,7 +316,7 @@ class Guesser(tk.Tk):
 
         self.paint_component = Paint(self, bg="white", bd=2, relief="raised", highlightthickness=0)
         self.toolbar_component = Toolbar(self, bg="white", bd=2, relief="raised")
-        self.model_loader_component = ModelLoader(self, bg="white", bd=2, relief="raised", height=90)
+        self.model_loader_component = ModelLoader(self, bg="white", bd=2, relief="raised")
         self.input_img_component = InputImage(self, bg="white", bd=2, relief="raised")
         self.bar_chart_component = BarChart(self, bg="white", bd=2, relief="raised")
         self.width_scale_component = WidthScale(self, bg="white", bd=2, relief="raised")
@@ -347,6 +349,7 @@ class Guesser(tk.Tk):
 
     def load_assets(self):
         self.img_icon = tk.PhotoImage(file=os.path.join("assets", "icon.png"))
+        self.img_open = tk.PhotoImage(file=os.path.join("assets", "open.png"))
         self.img_width = tk.PhotoImage(file=os.path.join("assets", "width.png"))
         self.img_brush = tk.PhotoImage(file=os.path.join("assets", "brush.png"))
         self.img_eraser = tk.PhotoImage(file=os.path.join("assets", "eraser.png"))
