@@ -231,7 +231,7 @@ class Paint(tk.Canvas):
                                        bbox[1] + self.winfo_rooty() + 1,
                                        bbox[2] + self.winfo_rootx(),
                                        bbox[3] + self.winfo_rooty()))
-            self.master.guess(img)
+            self.master.recognize(img)
             self.delete("selector", "selector-size")
 
 class WidthScale(tk.Frame):
@@ -300,7 +300,7 @@ class ModelLoader(tk.Frame):
         _, acc = model.evaluate(X_test, y_test, verbose=0)
         return acc
 
-class Guesser(tk.Tk):
+class App(tk.Tk):
     def __init__(self, width, height, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
         self._model = None
@@ -330,7 +330,7 @@ class Guesser(tk.Tk):
         self.width_scale_component.grid_remove()
 
         self.iconphoto(False, self.img_icon)
-        self.title("Number quesser")
+        self.title("Digit recognizer")
         self.mainloop()
 
     @property
@@ -340,10 +340,10 @@ class Guesser(tk.Tk):
     @model.setter
     def model(self, new):
         if new:
-            self.title(f"Number quesser - {new._name}")
+            self.title(f"Digit recognizer - {new._name}")
             self.toolbar_component.unlock_select_button()
         else:
-            self.title(f"Number quesser")
+            self.title(f"Digit recognizer")
             self.toolbar_component.lock_select_button()
         self._model = new
 
@@ -362,7 +362,7 @@ class Guesser(tk.Tk):
         else:
             self.width_scale_component.grid()
 
-    def guess(self, src):
+    def recognize(self, src):
         img = src.resize((28, 28))
         img = img.convert("L")
         img = np.array(img)
@@ -375,4 +375,4 @@ class Guesser(tk.Tk):
         self.bar_chart_component.plot(prediction)
 
 if __name__ == "__main__": 
-    Guesser(1000, 600)
+    App(1000, 600)
