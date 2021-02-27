@@ -1,9 +1,12 @@
 # Digit Recognizer
 
-Draw a number and see if machine can guess it.
+Digit Recognizer is a basic painting application extended with graphs to observe model predictions and pre-processed inputs to better understand what is happening under the hood of handwritten digit processing.
+There are also scripts to train and test a keras model with a mnist or custom dataset, so you don't have to build the entire model from scratch.
+If you are more experienced, you can load a self-designed model, the h5 file with the weights saved is enough.
 
-Program has access to the keras model which has been trained to guess numbers from 0-9. 
-If you want you can modify the model and train it using a custom dataset.
+Hopefully this project will help you get started with AI and you will be better able to understand how the input selection affects the precision of the model and whole output.
+
+The project is still in development, so new features will be coming soon.
 
 ## Quick start:
 
